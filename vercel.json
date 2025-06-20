@@ -5,5 +5,11 @@
       "src": "api/slack-gpt.js",
       "use": "@vercel/node"
     }
+  ],
+  "routes": [
+    {
+      "src": "/api/slack-gpt",
+      "dest": "api/slack-gpt.js"
+    }
   ]
 }

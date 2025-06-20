@@ -33,27 +33,40 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing parameters' });
     }
 
-    // ✅ 立即回應，避免 Slack timeout
+    // ✅ 避免 timeout：先回 Slack 200
     res.status(200).end();
 
-    // 🔒 權限檢查（非同步）
+    // 🔒 權限檢查
     if (!ALLOWED_USERS.includes(user_id)) {
       const slackRes = await fetch(response_url, {
-        $1,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          response_type: 'ephemeral',
+          text: '❌ 抱歉，你沒有權限使用這個指令。',
+        }),
       });
       console.log('Slack 回傳結果：', slackRes.status, await slackRes.text());
       return;
     }
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [{ role: 'user', content: text }],
-    });
+    // ✅ GPT 回覆邏輯，加上 try-catch 與 log
+    let answer = '';
+    try {
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: text }],
+      });
 
-    console.log('OpenAI 回傳內容：', completion);
-    const answer = completion.choices[0].message.content;
+      console.log('OpenAI 回傳內容：', completion);
+      answer = completion.choices?.[0]?.message?.content ?? '(⚠️ GPT 沒回內容)';
+    } catch (err) {
+      console.error('⚠️ GPT 回應失敗:', err);
+      answer = '(⚠️ GPT 回應失敗)';
+    }
 
-    await fetch(response_url, {
+    // ✅ 回覆到 Slack
+    const slackRes = await fetch(response_url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -61,6 +74,7 @@ export default async function handler(req, res) {
         text: `💡 GPT 回覆：\n${answer}`,
       }),
     });
+    console.log('Slack 回傳結果：', slackRes.status, await slackRes.text());
   } catch (err) {
     console.error('GPT webhook error:', err);
   }

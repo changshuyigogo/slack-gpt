@@ -1,10 +1,18 @@
-// GPT Webhook：支援 Slack Slash Command `/gpt` 指令，並限制特定 user_id 使用，改用 response_url 回 ephemeral（修正 req.text 錯誤）
+// GPT Webhook：支援 Slack Slash Command `/gpt`，限制特定 user_id 使用，回 ephemeral，✅ 加入 timeout-safe 回應
 import { OpenAI } from 'openai';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ✅ 只允許這些使用者使用 /gpt
-const ALLOWED_USERS = ['U06CACLH4LU'];
+const ALLOWED_USERS = [
+  'D06CACLJS12',
+  'U06CACLH4LU',
+  'U069L1P6HDJ',
+  'ULB8X2TFU',
+  'U06NE138J31',
+  'U06C7SGDK0S',
+  'U05RSRKFSH2',
+];
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -26,6 +34,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing parameters' });
     }
 
+    // ✅ 立即回應，避免 Slack timeout
+    res.status(200).end();
+
+    // 🔒 權限檢查（非同步）
     if (!ALLOWED_USERS.includes(user_id)) {
       await fetch(response_url, {
         method: 'POST',
@@ -35,7 +47,7 @@ export default async function handler(req, res) {
           text: '⚠️ 你沒有權限使用 /gpt，請聯絡管理員。',
         }),
       });
-      return res.status(200).end();
+      return;
     }
 
     const completion = await openai.chat.completions.create({
@@ -53,10 +65,7 @@ export default async function handler(req, res) {
         text: `💡 GPT 回覆：\n${answer}`,
       }),
     });
-
-    return res.status(200).end();
   } catch (err) {
     console.error('GPT webhook error:', err);
-    return res.status(500).end();
   }
 }

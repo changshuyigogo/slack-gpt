@@ -71,7 +71,7 @@ export default async function handler(req, res) {
           model: 'gpt-4o',
           messages: [{ role: 'user', content: text }],
         }),
-        10000 // ⏰ 10 秒 timeout
+        30000 // ⏰ 30 秒 timeout
       );
       console.log('✅ GPT 回傳成功:', completion);
       answer = completion.choices?.[0]?.message?.content ?? '(⚠️ GPT 沒回內容)';

@@ -12,7 +12,6 @@ const ALLOWED_USERS = [
   'U06NE138J31',
   'U06C7SGDK0S',
   'U05RSRKFSH2',
-  'U04CSEN11FE',
 ];
 
 export default async function handler(req, res) {
@@ -40,14 +39,10 @@ export default async function handler(req, res) {
 
     // 🔒 權限檢查（非同步）
     if (!ALLOWED_USERS.includes(user_id)) {
-      await fetch(response_url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          response_type: 'ephemeral',
-          text: '⚠️ 你沒有權限使用 /gpt，請聯絡管理員。',
-        }),
+      const slackRes = await fetch(response_url, {
+        $1,
       });
+      console.log('Slack 回傳結果：', slackRes.status, await slackRes.text());
       return;
     }
 

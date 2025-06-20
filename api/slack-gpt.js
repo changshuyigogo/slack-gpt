@@ -1,4 +1,4 @@
-// GPT Webhook：支援 Slack Slash Command `/gpt` 指令，並限制特定 user_id 使用，改用 response_url 回 ephemeral
+// GPT Webhook：支援 Slack Slash Command `/gpt` 指令，並限制特定 user_id 使用
 import { OpenAI } from 'openai';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -11,25 +11,19 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const body = new URLSearchParams(await req.text());
+  // Slack slash command 是 x-www-form-urlencoded 格式
+  const body = new URLSearchParams(req.body);
   const text = body.get('text');
   const user_id = body.get('user_id');
-  const response_url = body.get('response_url');
+  const channel_id = body.get('channel_id');
 
-  if (!text || !user_id || !response_url) {
+  if (!text || !user_id || !channel_id) {
     return res.status(400).json({ error: 'Missing parameters' });
   }
 
+  // 👉 權限過濾
   if (!ALLOWED_USERS.includes(user_id)) {
-    await fetch(response_url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        response_type: 'ephemeral',
-        text: '⚠️ 你沒有權限使用 /gpt，請聯絡管理員。',
-      }),
-    });
-    return res.status(200).end();
+    return res.status(200).send('⚠️ 你沒有權限使用 /gpt，請聯絡管理員。');
   }
 
   try {
@@ -40,27 +34,24 @@ export default async function handler(req, res) {
 
     const answer = completion.choices[0].message.content;
 
-    // 回應 ephemeral 訊息給使用者
-    await fetch(response_url, {
+    // 回傳訊息給 Slack
+    await fetch('https://slack.com/api/chat.postMessage', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
         response_type: 'ephemeral',
-        text: `💡 GPT 回覆：\n${answer}`,
+        channel: channel_id,
+        text: `<@${user_id}> 問：\n>${text}\n\n💡 GPT 回覆：\n${answer}`,
       }),
     });
 
-    return res.status(200).end();
+    // Slash command 回應（立刻回 200，避免超時）
+    return res.status(200).send();
   } catch (err) {
     console.error('GPT webhook error:', err);
-    await fetch(response_url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        response_type: 'ephemeral',
-        text: '🚨 發生錯誤，請稍後再試！',
-      }),
-    });
-    return res.status(500).end();
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
 }

@@ -1,8 +1,3 @@
-import { OpenAI } from 'openai';
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-// ✅ 白名單使用者列表
 const ALLOWED_USERS = [
   'U06CACLH4LU',
   'U069L1P6HDJ',
@@ -12,7 +7,6 @@ const ALLOWED_USERS = [
   'U05RSRKFSH2',
 ];
 
-// ✅ GPT 超時工具函式
 function withTimeout(promise, ms) {
   return Promise.race([
     promise,
@@ -40,7 +34,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing parameters' });
     }
 
-    // ✅ 避免 Slack timeout（3 秒內回覆）
+    // ✅ 回應 Slack 避免超時
     res.status(200).end();
 
     // 🔒 權限檢查
@@ -62,19 +56,33 @@ export default async function handler(req, res) {
       return;
     }
 
-    // ✅ 呼叫 GPT
+    // ✅ GPT 呼叫 with timeout（使用 fetch）
     let answer = '';
-    console.log('➡️ 開始呼叫 GPT');
     try {
-      const completion = await withTimeout(
-        openai.chat.completions.create({
-          model: 'gpt-4o',
-          messages: [{ role: 'user', content: text }],
+      console.log('📤 使用 fetch 呼叫 GPT...');
+      const openaiRes = await withTimeout(
+        fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o',
+            messages: [{ role: 'user', content: text }],
+          }),
         }),
-        30000 // ⏰ 30 秒 timeout
+        20000
       );
-      console.log('✅ GPT 回傳成功:', completion);
-      answer = completion.choices?.[0]?.message?.content ?? '(⚠️ GPT 沒回內容)';
+
+      const data = await openaiRes.json();
+      console.log('📥 OpenAI 原生回應：', data);
+
+      if (data?.choices?.[0]?.message?.content) {
+        answer = data.choices[0].message.content;
+      } else {
+        answer = '⚠️ GPT 沒有回覆內容';
+      }
     } catch (err) {
       console.error('❌ GPT 回應失敗:', err);
       answer =
@@ -83,8 +91,8 @@ export default async function handler(req, res) {
           : '(⚠️ GPT 回應失敗)';
     }
 
-    // 📬 回傳結果到 Slack
-    console.log('➡️ 傳送至 Slack...');
+    // 📬 回 Slack
+    console.log('➡️ 傳送結果到 Slack...');
     const slackRes = await fetch(response_url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

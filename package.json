@@ -1,0 +1,9 @@
+{
+  "name": "slack-gpt-vercel",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "openai": "^4.21.0"
+  }
+}

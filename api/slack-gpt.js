@@ -1,4 +1,4 @@
-// GPT Webhook：支援 Slack Slash Command `/gpt` 指令，並限制特定 user_id 使用，改用 response_url 回 ephemeral
+// GPT Webhook：支援 Slack Slash Command `/gpt` 指令，並限制特定 user_id 使用，改用 response_url 回 ephemeral（修正 req.text 錯誤）
 import { OpenAI } from 'openai';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -13,13 +13,12 @@ export default async function handler(req, res) {
 
   try {
     console.log('收到 Slack 請求 headers:', req.headers);
-    const rawText = await req.text();
-    console.log('收到 Slack 請求 body:', rawText);
+    console.log('收到 Slack 請求 body:', req.body);
 
-    const body = new URLSearchParams(rawText);
-    const text = body.get('text');
-    const user_id = body.get('user_id');
-    const response_url = body.get('response_url');
+    const body = req.body || {};
+    const text = body.text;
+    const user_id = body.user_id;
+    const response_url = body.response_url;
 
     console.log('解析結果:', { text, user_id, response_url });
 

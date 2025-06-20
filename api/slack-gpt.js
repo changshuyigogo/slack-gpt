@@ -4,7 +4,7 @@ import { OpenAI } from 'openai';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ✅ 只允許這些使用者使用 /gpt
-const ALLOWED_USERS = ['U06CACLH4LU', 'U069L1P6HDJ'];
+const ALLOWED_USERS = ['U06CACLH4LU'];
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

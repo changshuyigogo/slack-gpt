@@ -5,7 +5,6 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ✅ 只允許這些使用者使用 /gpt
 const ALLOWED_USERS = [
-  'D06CACLJS12',
   'U06CACLH4LU',
   'U069L1P6HDJ',
   'ULB8X2TFU',

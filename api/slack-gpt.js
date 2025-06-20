@@ -12,6 +12,7 @@ const ALLOWED_USERS = [
   'U06NE138J31',
   'U06C7SGDK0S',
   'U05RSRKFSH2',
+  'U04CSEN11FE',
 ];
 
 export default async function handler(req, res) {
